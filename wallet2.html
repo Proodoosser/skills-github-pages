@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TON Wallet Connection</title>
+    <script src="https://unpkg.com/@tonconnect/sdk@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            margin: 10px 0;
+            background: #e7e7f3;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TON Wallet Connection</h1>
+    <button id="connect-wallet">Connect Wallet</button>
+    <p id="wallet-address">Wallet Address: N/A</p>
+    <p id="wallet-balance">Wallet Balance: N/A</p>
+    <h2>Assets:</h2>
+    <ul id="assets-list"></ul>
+    
+    <div id="message-box" class="message"></div>
+
+    <script>
+        const tonConnect = new TonConnect();
+        const connectWalletButton = document.getElementById('connect-wallet');
+        const walletAddressElement = document.getElementById('wallet-address');
+        const walletBalanceElement = document.getElementById('wallet-balance');
+        const assetsListElement = document.getElementById('assets-list');
+        const messageBox = document.getElementById('message-box');
+
+        function showMessage(message, duration = 3000) {
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, duration);
+        }
+
+        async function connectWallet() {
+            try {
+                showMessage('Checking for wallet availability...');
+                
+                // Open wallet connection dialog
+                await tonConnect.connect();
+                showMessage('Wallet connected successfully!');
+
+                // Get connected wallet info
+                const walletInfo = await tonConnect.getWalletInfo();
+                walletAddressElement.textContent = `Wallet Address: ${walletInfo.address}`;
+
+                // Fetch wallet balance and assets
+                await fetchWalletDetails(walletInfo.address);
+            } catch (error) {
+                console.error('Error connecting wallet:', error);
+                showMessage('Failed to connect wallet. Please try again.', 5000);
+            }
+        }
+
+        async function fetchWalletDetails(walletAddress) {
+            try {
+                showMessage('Fetching wallet details...');
+                
+                // Fetch balance using public TON API
+                const response = await fetch(`https://tonapi.io/v1/account/getInfo?account=${walletAddress}`);
+                const data = await response.json();
+
+                // Display balance
+                const balance = parseInt(data.balance) / 1e9; // Convert nanotons to TONs
+                walletBalanceElement.textContent = `Wallet Balance: ${balance.toFixed(2)} TON`;
+
+                // Display assets
+                assetsListElement.innerHTML = '';
+                if (data.nfts && data.nfts.length > 0) {
+                    data.nfts.forEach((nft, index) => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `NFT ${index + 1}: ${nft.name}`;
+                        assetsListElement.appendChild(listItem);
+                    });
+                } else {
+                    assetsListElement.innerHTML = '<li>No NFTs found in this wallet.</li>';
+                }
+
+                showMessage('Wallet details fetched successfully!');
+            } catch (error) {
+                console.error('Error fetching wallet details:', error);
+                showMessage('Failed to fetch wallet details. Please try again.', 5000);
+            }
+        }
+
+        connectWalletButton.addEventListener('click', connectWallet);
+    </script>
+</body>
+</html>
